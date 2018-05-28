@@ -189,16 +189,28 @@ void DisplayAnimation(const FileInfo *file,
          && GetTimeInMillis() < end_time_ms;
        ++k) {
     uint32_t delay_us = 0;
+    tmillis_t accu_duration_ms = 0;
+    int frame_count = 0;
+    const tmillis_t start_ani_time_ms = GetTimeInMillis();
     while (!interrupt_received && GetTimeInMillis() <= end_time_ms
            && reader.GetNext(offscreen_canvas, &delay_us)) {
       const tmillis_t anim_delay_ms =
         override_anim_delay >= 0 ? override_anim_delay : delay_us / 1000;
-      const tmillis_t start_wait_ms = GetTimeInMillis();
       offscreen_canvas = matrix->SwapOnVSync(offscreen_canvas, vsync_multiple);
-      const tmillis_t time_already_spent = GetTimeInMillis() - start_wait_ms;
-      SleepMillis(anim_delay_ms - time_already_spent);
+
+      frame_count ++;
+      accu_duration_ms += anim_delay_ms;
+      const tmillis_t ellapsed_time_ms = GetTimeInMillis() - start_ani_time_ms;
+      const int wait_ms = (int)((int64_t)accu_duration_ms - ellapsed_time_ms);
+      if(wait_ms <= 0) {
+        fprintf(stderr, "Render delayed: %dms\n", wait_ms);
+      }
+      else {
+        SleepMillis(wait_ms);
+      }
     }
     reader.Rewind();
+    //fprintf(stdout, "Took %llums for %d frames\n", (GetTimeInMillis()-start_ani_time_ms), frame_count);
   }
 }
 
